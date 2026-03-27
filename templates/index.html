@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Biroska Lanches SENAI</title>
+<link rel="stylesheet" href="/static/index.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div class="flash-container">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="alert alert-{{ category }}">
+{{ message }}
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+</div>
+
+<header>
+<a href="/" class="logo">
+<span class="logo-text">Biroska Lanches</span>
+</a>
+
+<div class="nav-acoes">
+<span id="info-usuario"></span>
+<span id="badge-perfil"></span>
+<button id="btn-abrir-modal" class="btn btn-branco" onclick="abrirModal('login')">
+Entrar / Cadastrar
+</button>
+<button id="btn-logout" class="btn btn-branco" style="display:none" onclick="fazerLogout()">
+Sair
+</button>
+</div>
+</header>
+
+<main>
+<h1 class="secao-titulo">Lanches em Destaque 🌭</h1>
+<p class="secao-subtitulo">Explore, curta e comente os melhores Lanches do Biroska no SENAI.</p>
+
+<div class="grid-receitas">
+{% for receita in receitas %}
+<div class="card-receita" data-id="{{ receita.id }}">
+
+<div class="card-imagem">{{ receita.imagem }}</div>
+
+<div class="card-corpo">
+<h2 class="card-titulo">{{ receita.titulo }}</h2>
+<p class="card-descricao">{{ receita.descricao }}</p>
+
+<div class="card-acoes">
+<button class="btn-curtir" onclick="curtir({{ receita.id }}, this)">
+❤️ <span>{{ receita.curtidas | length }}</span>
+</button>
+<button class="btn-comentar" onclick="toggleComentarios({{ receita.id }})">
+💬 COMENTE AQUI!
+</button>
+</div>
+</div>
+
+<div class="secao-comentarios" id="comentarios-{{ receita.id }}">
+<div class="form-comentario">
+<input type="text" id="input-comentario-{{ receita.id }}" placeholder="Escreva seu comentário...">
+<button class="btn btn-laranja" onclick="enviarComentario({{ receita.id }})" style="padding: 8px 16px;">
+Enviar
+</button>
+</div>
+
+<div class="lista-comentarios" id="lista-{{ receita.id }}">
+{% for comentario in receita.comentarios %}
+<div class="item-comentario" id="comentario-{{ comentario.id }}">
+<div>
+<div class="comentario-autor">@{{ comentario.autor_nickname }}</div>
+<div class="comentario-texto">{{ comentario.texto }}</div>
+</div>
+{% if usuario and (usuario.id == comentario.autor_id or usuario.perfil == 'admin') %}
+<button class="btn btn-perigo" onclick="excluirComentario({{ comentario.id }})">🗑</button>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+</div>
+
+</div>
+{% endfor %}
+</div>
+</main>
+
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModalAoClicarFora(event)">
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+
+<div class="modal-cabecalho">
+<h2 class="modal-titulo" id="modal-titulo">Bem-vindo ao Biroska! 👋</h2>
+<button class="btn-fechar-modal" onclick="fecharModal()" aria-label="Fechar modal">✕</button>
+</div>
+
+<div class="tabs" role="tablist">
+<button class="tab ativa" id="tab-login"    onclick="trocarTab('login')"    role="tab">Entrar</button>
+<button class="tab"       id="tab-cadastro" onclick="trocarTab('cadastro')" role="tab">Cadastrar</button>
+</div>
+
+<div class="painel-form ativo" id="painel-login">
+<div class="grupo-campo">
+<label for="login-nickname">Nickname</label>
+<input type="text" id="login-nickname" placeholder="Seu Usuário">
+</div>
+<div class="grupo-campo">
+<label for="login-senha">Senha</label>
+<input type="password" id="login-senha" placeholder="••••••••">
+</div>
+
+<div class="msg-erro" id="erro-login">
+<span id="texto-erro-login"></span>
+</div>
+
+<button class="btn-submit-modal" onclick="submeterLogin()">Entrar</button>
+</div>
+
+<div class="painel-form" id="painel-cadastro">
+<div class="grupo-campo">
+<label for="cadastro-nickname">Nickname</label>
+<input type="text" id="cadastro-nickname" placeholder="Crie um Usuário de Login">
+</div>
+<div class="grupo-campo">
+<label for="cadastro-senha">Senha</label>
+<input type="password" id="cadastro-senha" placeholder="Crie uma Senha Forte">
+</div>
+
+<div class="msg-erro"    id="erro-cadastro"><span id="texto-erro-cadastro"></span></div>
+<div class="msg-sucesso" id="sucesso-cadastro"></div>
+
+<button class="btn-submit-modal" onclick="submeterCadastro()">Criar Conta</button>
+</div>
+
+</div>
+</div>
+
+<script>
+
+let usuarioAtual = {{ usuario | tojson }};
+
+function atualizarHeader() {
+const btnAbrir  = document.getElementById("btn-abrir-modal");
+const btnLogout = document.getElementById("btn-logout");
+const infoUsuario = document.getElementById("info-usuario");
+const badgePerfil = document.getElementById("badge-perfil");
+
+if (usuarioAtual) {
+btnAbrir.style.display  = "none";
+btnLogout.style.display = "inline-flex";
+infoUsuario.textContent = `@${usuarioAtual.nickname}`;
+badgePerfil.textContent = usuarioAtual.perfil;
+badgePerfil.style.display = "inline-block";
+} else {
+btnAbrir.style.display  = "inline-flex";
+btnLogout.style.display = "none";
+infoUsuario.textContent = "";
+badgePerfil.style.display = "none";
+}
+}
+
+atualizarHeader();
+
+function abrirModal(aba = "login") {
+document.getElementById("modal-overlay").classList.add("visivel");
+trocarTab(aba);
+limparErros();
+}
+
+function fecharModal() {
+document.getElementById("modal-overlay").classList.remove("visivel");
+limparErros();
+}
+
+function fecharModalAoClicarFora(event) {
+if (event.target === document.getElementById("modal-overlay")) {
+fecharModal();
+}
+}
+
+function trocarTab(aba) {
+document.getElementById("tab-login").classList.toggle("ativa",    aba === "login");
+document.getElementById("tab-cadastro").classList.toggle("ativa", aba === "cadastro");
+document.getElementById("painel-login").classList.toggle("ativo",    aba === "login");
+document.getElementById("painel-cadastro").classList.toggle("ativo", aba === "cadastro");
+limparErros();
+}
+
+function limparErros() {
+["login-nickname", "login-senha", "cadastro-nickname", "cadastro-senha"].forEach(id => {
+const el = document.getElementById(id);
+if (el) el.classList.remove("campo-erro");
+});
+const erroLogin    = document.getElementById("erro-login");
+const erroCadastro = document.getElementById("erro-cadastro");
+const sucCadastro  = document.getElementById("sucesso-cadastro");
+if (erroLogin)    erroLogin.classList.remove("visivel");
+if (erroCadastro) erroCadastro.classList.remove("visivel");
+if (sucCadastro)  sucCadastro.classList.remove("visivel");
+}
+
+async function submeterLogin() {
+limparErros();
+
+const nickname = document.getElementById("login-nickname").value.trim();
+const senha    = document.getElementById("login-senha").value.trim();
+
+let temErro = false;
+if (!nickname) {
+document.getElementById("login-nickname").classList.add("campo-erro");
+temErro = true;
+}
+if (!senha) {
+document.getElementById("login-senha").classList.add("campo-erro");
+temErro = true;
+}
+
+if (temErro) return;
+
+try {
+const resposta = await fetch("/login", {
+method: "POST",
+headers: {"Content-Type": "application/json"},
+body: JSON.stringify({ nickname, senha })
+});
+
+const dados = await resposta.json();
+
+if (!resposta.ok) {
+document.getElementById("texto-erro-login").textContent = dados.erro;
+document.getElementById("erro-login").classList.add("visivel");
+return;
+}
+
+usuarioAtual = dados.usuario;
+atualizarHeader();
+fecharModal();
+location.reload();
+
+} catch (e) {
+console.error("Erro de comunicação:", e);
+}
+}
+
+async function submeterCadastro() {
+limparErros();
+
+const nickname = document.getElementById("cadastro-nickname").value.trim();
+const senha    = document.getElementById("cadastro-senha").value.trim();
+
+try {
+const resposta = await fetch("/cadastrar", {
+method: "POST",
+headers: {"Content-Type": "application/json"},
+body: JSON.stringify({ nickname, senha })
+});
+
+const dados = await resposta.json();
+
+if (!resposta.ok) {
+document.getElementById("texto-erro-cadastro").textContent = dados.erro;
+document.getElementById("erro-cadastro").classList.add("visivel");
+return;
+}
+
+document.getElementById("sucesso-cadastro").textContent = "Cadastro realizado! Faça login para continuar.";
+document.getElementById("sucesso-cadastro").classList.add("visivel");
+        
+setTimeout(() => {
+document.getElementById("cadastro-nickname").value = "";
+document.getElementById("cadastro-senha").value = "";
+trocarTab("login");
+}, 1500);
+
+} catch (e) {
+console.error("Erro de comunicação:", e);
+}
+}
+
+
+async function fazerLogout() {
+await fetch("/logout", { method: "POST" });
+usuarioAtual = null;
+atualizarHeader();
+location.reload();
+}
+
+async function curtir(receitaId, botao) {
+if (!usuarioAtual) {
+abrirModal('login');
+return;
+}
+
+try {
+const resposta = await fetch(`/curtir/${receitaId}`, {method: "POST"});
+const dados = await resposta.json();
+
+if (resposta.ok) {
+botao.querySelector("span").textContent = dados.total_curtidas;
+botao.classList.toggle("ativo", dados.curtiu);
+}
+} catch (e) {
+console.error("Erro ao curtir:", e);
+}
+}
+
+function toggleComentarios(receitaId) {
+if (!usuarioAtual) {
+abrirModal('login');
+return;
+}
+const secao = document.getElementById(`comentarios-${receitaId}`);
+secao.classList.toggle("aberta");
+}
+
+async function enviarComentario(receitaId) {
+const input = document.getElementById(`input-comentario-${receitaId}`);
+const texto = input.value.trim();
+
+if (!texto) return;
+
+try {
+const resposta = await fetch(`/comentar/${receitaId}`, {
+method: "POST",
+headers: {"Content-Type": "application/json"},
+body: JSON.stringify({texto})
+});
+
+if (resposta.ok) {
+location.reload();
+}
+} catch (e) {
+console.error("Erro ao comentar:", e);
+}
+}
+
+async function excluirComentario(comentarioId) {
+if (!confirm("Tem certeza que deseja excluir este comentário?")) return;
+
+try {
+await fetch(`/comentario/${comentarioId}`, {method: "DELETE"});
+location.reload();
+} catch (e) {
+console.error("Erro ao excluir:", e);
+}
+}
+
+</script>
+</body>
+</html>

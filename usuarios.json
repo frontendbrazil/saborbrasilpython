@@ -1,0 +1,36 @@
+{
+"usuarios": [
+{
+"id": 1,
+"nickname": "admin",
+"senha": "$2b$12$e0WtPOfmW1XYPJsEXADSgOGgTPMVlzJY1JsBKGjTJ7T8f15.Cvkly",
+"perfil": "admin"
+},
+{
+"id": 2,
+"nickname": "maria_chef",
+"senha": "$2b$12$KvdVuiY9S.bqkCEP6.cETOJ.iK0UDXkW3p9n.uYVQKqdizRz3C3Ci",
+"perfil": "comum"
+}
+],
+"receitas": [
+{
+"id": 1,
+"titulo": "Pastel de Forno",
+"descricao": "Pastel crocante assado no forno, com recheio suculento de carne moída, queijo derretido e verduras frescas.",
+"imagem": "🥟",
+"curtidas": [],
+"comentarios": []
+},
+{
+"id": 2,
+"titulo": "Hamburguer de Cheedar",
+"descricao": "Hambúrguer suculento com queijo cheddar derretido, carne bovina grelhada na perfeição, alface, tomate e molho caseiro.",
+"imagem": "🍔",
+"curtidas": [],
+"comentarios": []
+}
+],
+"proximo_comentario_id": 1,
+"proximo_usuario_id": 3
+}
